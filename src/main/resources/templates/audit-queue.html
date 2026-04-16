@@ -1,30 +1,15 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Audit Queue</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
-</head>
-<body class="bg-light">
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-    <div class="container">
-        <a class="navbar-brand" href="/">EchoStream MVC</a>
-        <div class="navbar-nav">
-            <a class="nav-link" href="/ingestion-dashboard">Ingestion</a>
-            <a class="nav-link" href="/rights-management">Rights</a>
-            <a class="nav-link" href="/royalty-report">Royalty</a>
-            <a class="nav-link active" href="/audit-queue">Audit</a>
-        </div>
-    </div>
-</nav>
+<head th:replace="~{fragments/layout :: head('Audit Queue')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: header('audit')}"></header>
 
-<div class="container py-4">
-    <div th:if="${message}" class="alert alert-info" th:text="${message}"></div>
-    <div class="card shadow-sm">
-        <div class="card-header">Member 4: Pending Audit Queue</div>
-        <div class="card-body p-0">
-            <table class="table table-bordered mb-0">
+<main class="page">
+    <div class="container">
+        <p class="notice" th:if="${message}" th:text="${message}"></p>
+        <section class="card">
+            <h2>Member 4: Pending Audit Queue</h2>
+            <table class="table">
                 <thead>
                 <tr>
                     <th>Track ID</th>
@@ -36,26 +21,30 @@
                 </thead>
                 <tbody>
                 <tr th:if="${#lists.isEmpty(pendingTracks)}">
-                    <td colspan="5" class="text-center text-muted py-4">No tracks in PendingAudit state.</td>
+                    <td colspan="5">No tracks in PendingAudit state.</td>
                 </tr>
                 <tr th:each="track : ${pendingTracks}">
                     <td th:text="${track.id}"></td>
                     <td th:text="${track.title}"></td>
                     <td th:text="${track.creator != null ? track.creator.fullName : '-'}"></td>
-                    <td><span class="badge bg-warning text-dark" th:text="${track.lifecycleState}"></span></td>
-                    <td class="d-flex gap-2">
-                        <form th:action="@{'/audit-queue/' + ${track.id} + '/approve'}" method="post">
-                            <button class="btn btn-sm btn-success" type="submit">Approve</button>
-                        </form>
-                        <form th:action="@{'/audit-queue/' + ${track.id} + '/reject'}" method="post">
-                            <button class="btn btn-sm btn-danger" type="submit">Reject</button>
-                        </form>
+                    <td><span class="badge warning" th:text="${track.lifecycleState}"></span></td>
+                    <td>
+                        <div class="form-row">
+                            <form th:action="@{'/audit-queue/' + ${track.id} + '/approve'}" method="post">
+                                <button type="submit">Approve</button>
+                            </form>
+                            <form th:action="@{'/audit-queue/' + ${track.id} + '/reject'}" method="post">
+                                <button type="submit" class="secondary">Reject</button>
+                            </form>
+                        </div>
                     </td>
                 </tr>
                 </tbody>
             </table>
-        </div>
+        </section>
     </div>
-</div>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
 </body>
 </html>

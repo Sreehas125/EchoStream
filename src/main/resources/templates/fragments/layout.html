@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head(title)">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title th:text="${title}">EchoStream</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}" />
+</head>
+<body>
+<header class="site-header" th:fragment="header(active)">
+    <div class="container header-inner">
+        <div>
+            <p class="eyebrow">EchoStream MVC</p>
+            <h1>Operations Console</h1>
+        </div>
+        <nav class="nav">
+            <a th:classappend="${active == 'ingestion'} ? 'active'" href="/ingestion-dashboard">Ingestion</a>
+            <a th:classappend="${active == 'rights'} ? 'active'" href="/rights-management">Rights</a>
+            <a th:classappend="${active == 'royalty'} ? 'active'" href="/royalty-report">Royalty</a>
+            <a th:classappend="${active == 'audit'} ? 'active'" href="/audit-queue">Audit</a>
+        </nav>
+    </div>
+</header>
+
+<footer class="site-footer" th:fragment="footer">
+    <div class="container">
+        <span>EchoStream • OOAD MVC</span>
+    </div>
+</footer>
+</body>
+</html>
