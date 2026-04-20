@@ -28,28 +28,46 @@ public class RoyaltyReportController {
 
     @GetMapping("/royalty-report")
     public String view(Model model) {
-        populateDashboard(model, new RoyaltyViewForm(), null);
+        populateDashboard(model, new RoyaltyViewForm(), null, null, null);
         return "royalty-report";
     }
 
     @PostMapping("/royalty-report")
     public String calculate(@ModelAttribute RoyaltyViewForm form, Model model) {
-        RoyaltyCalculationCommand command = new RoyaltyCalculationCommand();
-        command.setAudioTrackId(form.getAudioTrackId());
-        command.setStreamCount(form.getStreamCount());
-        command.setGrossRevenue(form.getGrossRevenue());
-        command.setFixedRatePerStream(form.getFixedRatePerStream());
-        command.setRevenueSharePercent(form.getRevenueSharePercent());
+        try {
+            RoyaltyCalculationCommand command = new RoyaltyCalculationCommand();
+            command.setAudioTrackId(form.getAudioTrackId());
+            command.setStreamCount(form.getStreamCount());
+            command.setGrossRevenue(orZero(form.getGrossRevenue()));
+            command.setFixedRatePerStream(orZero(form.getFixedRatePerStream()));
+            command.setRevenueSharePercent(orZero(form.getRevenueSharePercent()));
 
-        BigDecimal payout = form.getMode().equals("FIXED")
-            ? royaltyService.calculateWithFixedRate(command)
-            : royaltyService.calculateWithRevenueShare(command);
+            BigDecimal payout = "FIXED".equalsIgnoreCase(form.getMode())
+                ? royaltyService.calculateWithFixedRate(command)
+                : royaltyService.calculateWithRevenueShare(command);
 
-        populateDashboard(model, form, payout);
+            royaltyService.createPaymentTransactionForTrackCreator(form.getAudioTrackId(), payout, "USD");
+            populateDashboard(model, form, payout, "Payment transaction created for this payout.", null);
+        } catch (RuntimeException ex) {
+            String errorMessage = ex.getMessage() == null || ex.getMessage().isBlank()
+                ? "Unable to calculate payout and create transaction."
+                : ex.getMessage();
+            populateDashboard(model, form, null, null, errorMessage);
+        }
         return "royalty-report";
     }
 
-    private void populateDashboard(Model model, RoyaltyViewForm form, BigDecimal payout) {
+    private BigDecimal orZero(BigDecimal value) {
+        return value == null ? BigDecimal.ZERO : value;
+    }
+
+    private void populateDashboard(
+        Model model,
+        RoyaltyViewForm form,
+        BigDecimal payout,
+        String successMessage,
+        String errorMessage
+    ) {
         List<PaymentTransaction> transactions = paymentTransactionRepository.findAll();
         BigDecimal totalPaid = transactions
             .stream()
@@ -61,6 +79,8 @@ public class RoyaltyReportController {
         model.addAttribute("transactionCount", transactions.size());
         model.addAttribute("royaltyForm", form);
         model.addAttribute("calculatedPayout", payout);
+        model.addAttribute("message", successMessage);
+        model.addAttribute("error", errorMessage);
     }
 
     public static class RoyaltyViewForm {

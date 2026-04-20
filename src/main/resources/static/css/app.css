@@ -171,6 +171,22 @@ button.secondary {
     border-radius: 8px;
 }
 
+.notice.error {
+    background: #fdecea;
+    border-left-color: var(--danger);
+}
+
+.hint {
+    color: var(--muted);
+    font-size: 0.8rem;
+}
+
+.error-text {
+    color: var(--danger);
+    font-size: 0.8rem;
+    min-height: 1em;
+}
+
 .site-footer {
     padding: 20px 0 30px;
     color: var(--muted);

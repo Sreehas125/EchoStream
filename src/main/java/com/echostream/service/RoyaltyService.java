@@ -16,6 +16,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class RoyaltyService {
@@ -50,19 +51,45 @@ public class RoyaltyService {
         return context.calculate(input);
     }
 
+    @Transactional
+    public PaymentTransaction createPaymentTransactionForTrackCreator(Long trackId, BigDecimal amount, String currency) {
+        AudioTrack track = audioTrackRepository
+            .findWithCreatorById(trackId)
+            .orElseThrow(() -> new ResourceNotFoundException("AudioTrack not found: " + trackId));
+
+        return persistPaymentTransaction(track, track.getCreator(), amount, currency);
+    }
+
+    @Transactional
     public PaymentTransaction createPaymentTransaction(Long trackId, Long beneficiaryId, BigDecimal amount, String currency) {
         AudioTrack track = audioTrackRepository
-            .findById(trackId)
+            .findWithCreatorById(trackId)
             .orElseThrow(() -> new ResourceNotFoundException("AudioTrack not found: " + trackId));
 
         ContentCreator beneficiary = contentCreatorRepository
             .findById(beneficiaryId)
             .orElseThrow(() -> new ResourceNotFoundException("ContentCreator not found: " + beneficiaryId));
 
+        return persistPaymentTransaction(track, beneficiary, amount, currency);
+    }
+
+    private PaymentTransaction persistPaymentTransaction(
+        AudioTrack track,
+        ContentCreator beneficiary,
+        BigDecimal amount,
+        String currency
+    ) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Payout amount must be greater than zero.");
+        }
+        if (currency == null || currency.isBlank()) {
+            throw new IllegalArgumentException("Currency is required.");
+        }
+
         PaymentTransaction transaction = new PaymentTransaction();
         transaction.setTransactionRef("TXN-" + UUID.randomUUID());
         transaction.setAmount(amount);
-        transaction.setCurrency(currency);
+        transaction.setCurrency(currency.trim().toUpperCase());
         transaction.setStatus(PaymentStatus.INITIATED);
         transaction.setTransactionDate(LocalDateTime.now());
         transaction.setAudioTrack(track);

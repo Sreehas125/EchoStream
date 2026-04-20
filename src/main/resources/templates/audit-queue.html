@@ -7,6 +7,37 @@
 <main class="page">
     <div class="container">
         <p class="notice" th:if="${message}" th:text="${message}"></p>
+        <p class="notice error" th:if="${error}" th:text="${error}"></p>
+        <section class="card">
+            <h2>Queue Tracks For Audit</h2>
+            <table class="table">
+                <thead>
+                <tr>
+                    <th>Track ID</th>
+                    <th>Title</th>
+                    <th>Creator</th>
+                    <th>Lifecycle State</th>
+                    <th>Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:if="${#lists.isEmpty(inboundTracks)}">
+                    <td colspan="5">No tracks in Uploaded or Validating state.</td>
+                </tr>
+                <tr th:each="track : ${inboundTracks}">
+                    <td th:text="${track.id}"></td>
+                    <td th:text="${track.title}"></td>
+                    <td th:text="${track.creator != null ? track.creator.fullName : '-'}"></td>
+                    <td><span class="badge" th:text="${track.lifecycleState}"></span></td>
+                    <td>
+                        <form th:action="@{'/audit-queue/' + ${track.id} + '/queue'}" method="post">
+                            <button type="submit">Queue For Audit</button>
+                        </form>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </section>
         <section class="card">
             <h2>Member 4: Pending Audit Queue</h2>
             <table class="table">

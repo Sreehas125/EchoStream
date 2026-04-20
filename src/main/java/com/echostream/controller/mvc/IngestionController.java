@@ -5,8 +5,10 @@ import com.echostream.domain.enums.TrackType;
 import com.echostream.repository.AudioTrackRepository;
 import com.echostream.repository.ContentCreatorRepository;
 import com.echostream.service.AudioIngestionService;
+import com.echostream.service.LocalFileStorageService;
 import com.echostream.service.dto.IngestionCommand;
 import java.util.List;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,16 +19,22 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @Controller
 public class IngestionController {
 
+    private static final long MUSIC_MAX_FILE_SIZE_BYTES = 10L * 1024 * 1024;
+    private static final long PODCAST_MAX_FILE_SIZE_BYTES = 100L * 1024 * 1024;
+
     private final AudioIngestionService audioIngestionService;
+    private final LocalFileStorageService localFileStorageService;
     private final AudioTrackRepository audioTrackRepository;
     private final ContentCreatorRepository contentCreatorRepository;
 
     public IngestionController(
         AudioIngestionService audioIngestionService,
+        LocalFileStorageService localFileStorageService,
         AudioTrackRepository audioTrackRepository,
         ContentCreatorRepository contentCreatorRepository
     ) {
         this.audioIngestionService = audioIngestionService;
+        this.localFileStorageService = localFileStorageService;
         this.audioTrackRepository = audioTrackRepository;
         this.contentCreatorRepository = contentCreatorRepository;
     }
@@ -42,12 +50,19 @@ public class IngestionController {
 
     @PostMapping("/ingestion-dashboard")
     public String ingestTrack(@ModelAttribute IngestionForm form, RedirectAttributes redirectAttributes) {
+        String validationError = validateUpload(form.getTrackType(), form.getUploadFile());
+        if (validationError != null) {
+            redirectAttributes.addFlashAttribute("error", validationError);
+            return "redirect:/ingestion-dashboard";
+        }
+
+        String storedPath = localFileStorageService.store(form.getUploadFile());
         IngestionCommand command = new IngestionCommand();
         command.setTrackType(form.getTrackType());
         command.setCreatorId(form.getCreatorId());
         command.setTitle(form.getTitle());
         command.setDurationSeconds(form.getDurationSeconds());
-        command.setFilePath(form.getFilePath());
+        command.setFilePath(storedPath);
         command.setAlbumName(form.getAlbumName());
         command.setGenre(form.getGenre());
         command.setIsrcCode(form.getIsrcCode());
@@ -55,9 +70,31 @@ public class IngestionController {
         command.setEpisodeNumber(form.getEpisodeNumber());
         command.setHostName(form.getHostName());
 
-        audioIngestionService.ingestTrack(command);
+        try {
+            audioIngestionService.ingestTrack(command);
+        } catch (RuntimeException ex) {
+            localFileStorageService.deleteIfExists(storedPath);
+            throw ex;
+        }
         redirectAttributes.addFlashAttribute("message", "Track uploaded and queued for validation.");
         return "redirect:/ingestion-dashboard";
+    }
+
+    private String validateUpload(TrackType trackType, MultipartFile uploadFile) {
+        if (trackType == null) {
+            return "Track type is required.";
+        }
+        if (uploadFile == null || uploadFile.isEmpty()) {
+            return "Please choose a local audio file to upload.";
+        }
+
+        long maxSize = trackType == TrackType.PODCAST ? PODCAST_MAX_FILE_SIZE_BYTES : MUSIC_MAX_FILE_SIZE_BYTES;
+        if (uploadFile.getSize() > maxSize) {
+            String limit = trackType == TrackType.PODCAST ? "100 MB" : "10 MB";
+            return "Selected file exceeds the " + limit + " limit for " + trackType + ".";
+        }
+
+        return null;
     }
 
     public static class IngestionForm {
@@ -66,7 +103,7 @@ public class IngestionController {
         private Long creatorId;
         private String title;
         private Integer durationSeconds;
-        private String filePath;
+        private MultipartFile uploadFile;
         private String albumName;
         private String genre;
         private String isrcCode;
@@ -106,12 +143,12 @@ public class IngestionController {
             this.durationSeconds = durationSeconds;
         }
 
-        public String getFilePath() {
-            return filePath;
+        public MultipartFile getUploadFile() {
+            return uploadFile;
         }
 
-        public void setFilePath(String filePath) {
-            this.filePath = filePath;
+        public void setUploadFile(MultipartFile uploadFile) {
+            this.uploadFile = uploadFile;
         }
 
         public String getAlbumName() {

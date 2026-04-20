@@ -8,6 +8,8 @@
     <div class="container grid two">
         <section class="card">
             <h2>Member 3: Strategy-Based Royalty Calculator</h2>
+            <p class="notice" th:if="${message}" th:text="${message}"></p>
+            <p class="notice error" th:if="${error}" th:text="${error}"></p>
             <form th:action="@{/royalty-report}" th:object="${royaltyForm}" method="post" class="form-grid">
                 <div class="form-row">
                     <label>Audio Track ID</label>
@@ -63,6 +65,7 @@
     <div class="container">
         <section class="card">
             <h2>Payment Transactions</h2>
+            <p class="hint">Need to modify status or currency? Open <a href="/transaction-edits">Transaction Edits</a>.</p>
             <table class="table">
                 <thead>
                 <tr>
